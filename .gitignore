@@ -1,0 +1,28 @@
+# Env
+.env
+.env.local
+.env.*.local
+
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Build
+dist/
+backend/dist/
+
+# Logs
+logs/
+*.log
+backend/logs/
+
+# API quota tracker
+backend/.api_quota.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

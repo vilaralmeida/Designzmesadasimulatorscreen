@@ -5,6 +5,7 @@ import Story from "./pages/Story";
 import Stats from "./pages/Stats";
 import Donate from "./pages/Donate";
 import Tips from "./pages/Tips";
+import Admin from "./pages/Admin";
 
 export const router = createBrowserRouter([
   {
@@ -16,7 +17,8 @@ export const router = createBrowserRouter([
       { path: "stats", Component: Stats },
       { path: "ajuda", Component: Donate },
       { path: "dicas", Component: Tips },
-      // { path: "*", Component: NotFound },
     ],
   },
+  // Admin fora do RootLayout (sem bottom bar, tela própria)
+  { path: "/admin", Component: Admin },
 ]);

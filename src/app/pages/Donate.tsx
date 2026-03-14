@@ -1,8 +1,20 @@
-import React, { useState } from 'react';
-import { Coffee, Copy, CheckCircle2, QrCode, Heart, Star, MessageSquareHeart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Copy, CheckCircle2, QrCode, Heart, Star, MessageSquareHeart } from 'lucide-react';
+import { api } from '../../lib/api';
 
 export default function Donate() {
   const [copied, setCopied] = useState(false);
+  const [pixKey, setPixKey] = useState('ze.mesada@pindaiba.com.br');
+  const [helpMessage, setHelpMessage] = useState('O milagre não vai se pagar sozinho! Me paga um salgado pra eu ter energia no meu próximo green "garantido" pelo Chicão!');
+  const [qrCodeImage, setQrCodeImage] = useState('');
+
+  useEffect(() => {
+    api.getContent().then(blocks => {
+      if (blocks.pix_key?.value) setPixKey(blocks.pix_key.value);
+      if (blocks.help_message?.value) setHelpMessage(blocks.help_message.value);
+      if (blocks.qr_code_image?.value) setQrCodeImage(blocks.qr_code_image.value);
+    }).catch(() => {/* usa defaults */});
+  }, []);
 
   const pixComments = [
     {
@@ -30,7 +42,7 @@ export default function Donate() {
 
   const handleCopyPix = () => {
     try {
-      navigator.clipboard.writeText("ze.mesada@pindaiba.com.br");
+      navigator.clipboard.writeText(pixKey);
     } catch (e) {
       // Ignora erro caso não haja suporte a clipboard, apenas mostra o feedback
     }
@@ -59,8 +71,7 @@ export default function Donate() {
       {/* Description / Story */}
       <div className="bg-[#1A1D24] p-4 border-4 border-[#0D0F14] rounded-2xl shadow-[6px_6px_0_0_#000] transform rotate-1 mb-8 w-full">
         <p className="text-gray-300 text-[11px] font-bold uppercase tracking-wider text-center leading-relaxed">
-          O milagre não vai se pagar sozinho! <br/>
-          Me paga um salgado pra eu ter energia no meu próximo green "garantido" pelo Chicão!
+          {helpMessage}
         </p>
       </div>
 
@@ -102,11 +113,17 @@ export default function Donate() {
           Manda o PIX!
         </h2>
 
-        {/* Fake QR Code Area */}
+        {/* QR Code Area */}
         <div className="bg-white p-4 rounded-xl border-4 border-black mb-6 transform rotate-2 shadow-inner group cursor-pointer" onClick={handleCopyPix}>
-          <div className="w-40 h-40 border-4 border-dashed border-gray-300 rounded-lg flex items-center justify-center bg-gray-50 relative overflow-hidden">
-            <QrCode size={100} className="text-black opacity-80 group-hover:scale-110 transition-transform duration-300" strokeWidth={1} />
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent to-black/5" />
+          <div className="w-40 h-40 flex items-center justify-center bg-gray-50 relative overflow-hidden rounded-lg">
+            {qrCodeImage ? (
+              <img src={qrCodeImage} alt="QR Code PIX" className="w-full h-full object-contain" />
+            ) : (
+              <>
+                <div className="border-4 border-dashed border-gray-300 rounded-lg absolute inset-0" />
+                <QrCode size={100} className="text-black opacity-80 group-hover:scale-110 transition-transform duration-300" strokeWidth={1} />
+              </>
+            )}
           </div>
         </div>
 
@@ -114,7 +131,7 @@ export default function Donate() {
         <div className="w-full flex items-center gap-2">
           <div className="flex-1 bg-[#0D0F14] border-2 border-[#4A4E58] rounded-xl px-3 py-3 overflow-hidden">
             <p className="text-[#00D46A] font-mono text-[10px] sm:text-xs truncate font-bold">
-              ze.mesada@pindaiba.com.br
+              {pixKey}
             </p>
           </div>
           <button 

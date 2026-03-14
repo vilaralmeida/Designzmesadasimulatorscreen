@@ -1,53 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageCircle, Send, User, AtSign, Lightbulb, MessageSquare } from 'lucide-react';
+import { api, Tip } from '../../lib/api';
 
-interface Comment {
-  id: string;
-  name: string;
-  email: string;
-  suggestion: string;
-  date: string;
+function timeAgo(iso: string) {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60)   return 'Agora mesmo';
+  if (diff < 3600) return `Há ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `Há ${Math.floor(diff / 3600)}h`;
+  return `Há ${Math.floor(diff / 86400)}d`;
 }
 
 export default function Tips() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [suggestion, setSuggestion] = useState('');
-  
-  // Mock data inicial
-  const [comments, setComments] = useState<Comment[]>([
-    {
-      id: '1',
-      name: 'Carlinhos da Bet',
-      email: 'carlinhos@bet.com.br',
-      suggestion: 'Manda all-in no empate do Íbis! A odd tá 15.00, confia que é sucesso absoluto!',
-      date: 'Há 2 horas'
-    },
-    {
-      id: '2',
-      name: 'João Sem Sorte',
-      email: 'joao.loss@email.com',
-      suggestion: 'Esquece futebol, o negócio agora é apostar na corrida de galgos. O galgo 4 tá voando baixo.',
-      date: 'Há 5 horas'
-    }
-  ]);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [tips, setTips] = useState<Tip[]>([]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    api.getTips().then(res => setTips(res.data)).catch(() => {});
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email || !suggestion) return;
-
-    const newComment: Comment = {
-      id: Date.now().toString(),
-      name,
-      email,
-      suggestion,
-      date: 'Agora mesmo'
-    };
-
-    setComments([newComment, ...comments]);
-    setName('');
-    setEmail('');
-    setSuggestion('');
+    setError('');
+    setSending(true);
+    try {
+      const newTip = await api.postTip({ name, email, suggestion });
+      setTips([newTip, ...tips]);
+      setName('');
+      setEmail('');
+      setSuggestion('');
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar. Tenta de novo!');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -107,12 +96,17 @@ export default function Tips() {
             />
           </div>
 
-          <button 
+          {error && (
+            <p className="text-[#FF4B4B] text-[10px] font-black uppercase tracking-wider text-center">{error}</p>
+          )}
+
+          <button
             type="submit"
-            className="w-full bg-[#B854FF] text-black font-black uppercase tracking-widest py-3 rounded-xl border-4 border-black shadow-[4px_4px_0_0_#000] transform hover:-translate-y-1 hover:shadow-[6px_6px_0_0_#000] active:translate-y-1 active:shadow-none transition-all flex justify-center items-center gap-2 mt-2"
+            disabled={sending}
+            className="w-full bg-[#B854FF] text-black font-black uppercase tracking-widest py-3 rounded-xl border-4 border-black shadow-[4px_4px_0_0_#000] transform hover:-translate-y-1 hover:shadow-[6px_6px_0_0_#000] active:translate-y-1 active:shadow-none transition-all flex justify-center items-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Send size={18} strokeWidth={3} />
-            Mandar Palpite
+            {sending ? 'Mandando...' : 'Mandar Palpite'}
           </button>
         </div>
       </form>
@@ -126,32 +120,37 @@ export default function Tips() {
           </h2>
         </div>
 
-        <div className="space-y-4">
-          {comments.map((comment, index) => (
-            <div 
-              key={comment.id}
-              className={`bg-[#1A1D24] border-4 border-[#0D0F14] rounded-xl p-3 shadow-[4px_4px_0_0_#000] relative transform transition-transform hover:scale-[1.02] ${index % 2 === 0 ? '-rotate-1' : 'rotate-1'}`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h3 className="text-[#B854FF] font-black text-[11px] uppercase tracking-wider">{comment.name}</h3>
-                  <p className="text-gray-500 text-[9px] font-bold tracking-widest">{comment.email}</p>
+        {tips.length === 0 ? (
+          <p className="text-center text-gray-600 text-[10px] font-black uppercase tracking-widest py-6">
+            Nenhum conselho ainda. Seja o primeiro!
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {tips.map((tip, index) => (
+              <div
+                key={tip.id}
+                className={`bg-[#1A1D24] border-4 border-[#0D0F14] rounded-xl p-3 shadow-[4px_4px_0_0_#000] relative transform transition-transform hover:scale-[1.02] ${index % 2 === 0 ? '-rotate-1' : 'rotate-1'}`}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="text-[#B854FF] font-black text-[11px] uppercase tracking-wider">{tip.name}</h3>
+                    <p className="text-gray-500 text-[9px] font-bold tracking-widest">{tip.email}</p>
+                  </div>
+                  <span className="text-gray-500 text-[8px] uppercase tracking-widest bg-[#0D0F14] px-2 py-1 rounded border border-[#0D0F14]/50">
+                    {timeAgo(tip.created_at)}
+                  </span>
                 </div>
-                <span className="text-gray-500 text-[8px] uppercase tracking-widest bg-[#0D0F14] px-2 py-1 rounded border border-[#0D0F14]/50">
-                  {comment.date}
-                </span>
+
+                <div className="bg-[#0D0F14] p-3 rounded-lg border-2 border-[#4A4E58] relative mt-2">
+                  <p className="text-white text-xs font-bold leading-relaxed">
+                    "{tip.suggestion}"
+                  </p>
+                  <div className="absolute -top-2 left-4 w-4 h-4 bg-[#0D0F14] border-t-2 border-l-2 border-[#4A4E58] transform rotate-45" />
+                </div>
               </div>
-              
-              <div className="bg-[#0D0F14] p-3 rounded-lg border-2 border-[#4A4E58] relative mt-2">
-                <p className="text-white text-xs font-bold leading-relaxed">
-                  "{comment.suggestion}"
-                </p>
-                {/* Tail for chat bubble vibe */}
-                <div className="absolute -top-2 left-4 w-4 h-4 bg-[#0D0F14] border-t-2 border-l-2 border-[#4A4E58] transform rotate-45" />
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

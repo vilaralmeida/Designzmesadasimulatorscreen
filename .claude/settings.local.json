@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"c:\\\\Users\\\\Windows11\\\\Designzmesadasimulatorscreen\\\\.gitignore\":*)",
+      "Bash(\"c:\\\\Users\\\\Windows11\\\\Designzmesadasimulatorscreen\\\\supabase\\\\schema.sql\":*)"
+    ]
+  }
+}

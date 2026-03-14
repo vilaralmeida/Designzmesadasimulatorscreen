@@ -1,15 +1,25 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { DonateCTA } from '../components/DonateCTA';
 import { MatchCard } from '../components/MatchCard';
 import { BankrollChart } from '../components/BankrollChart';
 import { BetHistoryCard } from '../components/BetHistoryCard';
 import { UpcomingBetsTable } from '../components/UpcomingBetsTable';
+import { BalanceCard } from '../components/BalanceCard';
 import exampleImage from 'figma:asset/5904eb9eb72b5560bdc24189852159dc8ae88496.png';
 import winImage from 'figma:asset/fff309965f78ba749f829df22aca85c32448399d.png';
 import lossImage from 'figma:asset/38de288c4fd63109016bd967f005d4a38821089c.png';
 import { AlignJustify, History, AlertTriangle } from 'lucide-react';
+import { api, Bet } from '../../lib/api';
 
 export default function Home() {
+  const [bets, setBets] = useState<Bet[]>([]);
+
+  useEffect(() => {
+    api.getBets(10)
+      .then(res => setBets(res.data))
+      .catch(() => setBets([]));
+  }, []);
+
   return (
     <div className="w-full max-w-md p-4 relative z-10 overflow-x-hidden">
       {/* Header - Zé Mesada Vibe */}
@@ -48,6 +58,8 @@ export default function Home() {
         </div>
       </div>
 
+      <BalanceCard />
+
       <UpcomingBetsTable />
 
       <DonateCTA />
@@ -63,23 +75,28 @@ export default function Home() {
         </h2>
       </div>
 
-      <BetHistoryCard 
-        status="win"
-        imageSrc={winImage}
-        match="Ceará 2 x 0 Fortaleza"
-        betAmount={20}
-        odds={2.50}
-        duendeQuote="GOOOOL! Falei que era certeza, pai! Chama no Pix!"
-      />
-
-      <BetHistoryCard 
-        status="loss"
-        imageSrc={lossImage}
-        match="Íbis 0 x 1 Ferroviário"
-        betAmount={50}
-        odds={1.80}
-        duendeQuote="Foi mal mano... A bola é redonda, culpa do juizão."
-      />
+      {bets.length === 0 ? (
+        <div className="text-center text-gray-500 text-[11px] font-black uppercase tracking-widest py-8">
+          Ainda sem apostas liquidadas. Os jogos ainda não começaram!
+        </div>
+      ) : (
+        bets.map((bet, idx) => {
+          const matchLabel = bet.home_score != null
+            ? `${bet.home_team} ${bet.home_score} x ${bet.away_score} ${bet.away_team}`
+            : `${bet.home_team} x ${bet.away_team}`;
+          return (
+            <BetHistoryCard
+              key={bet.id}
+              status={bet.result as 'win' | 'loss'}
+              imageSrc={bet.result === 'win' ? winImage : lossImage}
+              match={matchLabel}
+              betAmount={Number(bet.amount)}
+              odds={Number(bet.odds)}
+              duendeQuote={bet.duende_quote || '...'}
+            />
+          );
+        })
+      )}
     </div>
   );
 }
