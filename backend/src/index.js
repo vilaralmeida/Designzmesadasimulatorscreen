@@ -17,7 +17,20 @@ const app = express();
 
 // ── Segurança ───────────────────────────────────────────────
 app.use(helmet());
-app.use(cors({ origin: config.frontendUrl, optionsSuccessStatus: 200 }));
+const ALLOWED_ORIGINS = [
+  config.frontendUrl,
+  'https://pindaiba.red',
+  'https://www.pindaiba.red',
+  'https://designzmesadasimulatorscreenvercel.vercel.app',
+  'http://localhost:5173',
+];
+app.use(cors({
+  origin: (origin, cb) => {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error('CORS: origem não permitida'));
+  },
+  optionsSuccessStatus: 200,
+}));
 app.use(express.json());
 app.use(rateLimit({ windowMs: 60_000, max: 60, message: { error: 'Muitas requisições. Tente em breve.' } }));
 
