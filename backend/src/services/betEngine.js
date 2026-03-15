@@ -2,23 +2,45 @@ import { supabase } from '../lib/supabase.js';
 import { fetchUpcomingFixtures, fetchOdds } from './apiFootball.js';
 import { logger } from '../lib/logger.js';
 
-// ── Ligas prioritárias ──────────────────────────────────────
+// ── Pool de ligas (ordenadas por prioridade) ─────────────────
 const PRIORITY_LEAGUES = [
-  { id: 71,  name: 'Brasileirão Série A', country: 'Brazil'   },
-  { id: 39,  name: 'Premier League',      country: 'England'  },
-  { id: 140, name: 'La Liga',             country: 'Spain'    },
-  { id: 135, name: 'Serie A',             country: 'Italy'    },
-  { id: 94,  name: 'Primeira Liga',       country: 'Portugal' },
+  // Brasil
+  { id: 71,  name: 'Brasileirão Série A', country: 'Brazil'      },
+  { id: 72,  name: 'Brasileirão Série B', country: 'Brazil'      },
+  { id: 73,  name: 'Copa do Brasil',      country: 'Brazil'      },
+  // Europa — top 5
+  { id: 39,  name: 'Premier League',      country: 'England'     },
+  { id: 140, name: 'La Liga',             country: 'Spain'       },
+  { id: 135, name: 'Serie A',             country: 'Italy'       },
+  { id: 78,  name: 'Bundesliga',          country: 'Germany'     },
+  { id: 61,  name: 'Ligue 1',             country: 'France'      },
+  { id: 94,  name: 'Primeira Liga',       country: 'Portugal'    },
+  // Europa — competições internacionais
+  { id: 2,   name: 'Champions League',    country: 'Europe'      },
+  { id: 3,   name: 'Europa League',       country: 'Europe'      },
+  { id: 848, name: 'Conference League',   country: 'Europe'      },
+  // Europa — outras ligas
+  { id: 88,  name: 'Eredivisie',          country: 'Netherlands' },
+  { id: 144, name: 'Belgian Pro League',  country: 'Belgium'     },
+  { id: 179, name: 'Scottish Prem.',      country: 'Scotland'    },
+  { id: 203, name: 'Süper Lig',           country: 'Turkey'      },
+  { id: 197, name: 'Super League',        country: 'Greece'      },
+  // Américas
+  { id: 253, name: 'MLS',                 country: 'USA'         },
+  { id: 262, name: 'Liga MX',             country: 'Mexico'      },
+  { id: 128, name: 'Primera División',    country: 'Argentina'   },
+  { id: 239, name: 'Primera División',    country: 'Chile'       },
+  { id: 218, name: 'Serie A',             country: 'Colombia'    },
+  // Ásia / Oriente Médio
+  { id: 98,  name: 'J-League',            country: 'Japan'       },
+  { id: 292, name: 'K-League',            country: 'South Korea' },
+  { id: 307, name: 'Saudi Pro League',    country: 'Saudi Arabia'},
+  // África
+  { id: 233, name: 'Premier League',      country: 'Egypt'       },
 ];
 
-// ── Ligas de fallback (ativadas só quando não há jogos nas prioritárias) ──
-const FALLBACK_LEAGUES = [
-  { id: 2,   name: 'Champions League',   country: 'Europe'   },
-  { id: 61,  name: 'Ligue 1',            country: 'France'   },
-  { id: 88,  name: 'Eredivisie',         country: 'Netherlands' },
-  { id: 253, name: 'MLS',                country: 'USA'      },
-  { id: 262, name: 'Liga MX',            country: 'Mexico'   },
-];
+// Mantido por compatibilidade com ensureContinuousBet
+const FALLBACK_LEAGUES = PRIORITY_LEAGUES.slice(10);
 
 // ── Frases do Duende Chicão ─────────────────────────────────
 const DUENDE_QUOTES = [
@@ -61,7 +83,7 @@ function randomBetAmount() {
  * @param {number} opts.daysAhead - Janela de busca em dias (padrão: 5)
  * @param {Array}  opts.leagues   - Lista de ligas a usar (padrão: PRIORITY_LEAGUES)
  */
-export async function generateDailyBets({ daysAhead = 7, leagues = PRIORITY_LEAGUES, maxBets = 5 } = {}) {
+export async function generateDailyBets({ daysAhead = 14, leagues = PRIORITY_LEAGUES, maxBets = 8 } = {}) {
   const MAX_NEW_BETS = maxBets;
   logger.info('bet_engine_start', { max_bets: MAX_NEW_BETS, days_ahead: daysAhead, leagues: leagues.length });
 
