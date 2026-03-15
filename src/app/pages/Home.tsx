@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { DonateCTA } from '../components/DonateCTA';
-import { MatchCard } from '../components/MatchCard';
 import { BankrollChart } from '../components/BankrollChart';
 import { BetHistoryCard } from '../components/BetHistoryCard';
 import { UpcomingBetsTable } from '../components/UpcomingBetsTable';
@@ -59,16 +58,14 @@ export default function Home() {
         </div>
       </div>
 
-      <BalanceCard />
-
       <BeatDuendeCard />
 
       <UpcomingBetsTable />
 
       <DonateCTA />
-      
-      <MatchCard />
-      
+
+      <BalanceCard />
+
       <BankrollChart />
 
       <div className="mt-6 mb-8 flex items-center gap-2 border-b-2 border-dashed border-[#4A4E58] pb-3">
