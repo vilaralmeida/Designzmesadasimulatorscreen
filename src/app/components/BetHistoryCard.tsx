@@ -25,14 +25,14 @@ export const BetHistoryCard = ({ status, imageSrc, match, betAmount, odds, duend
       <div className={`bg-[#1A1D24] border-4 border-[#0D0F14] rounded-2xl p-4 ${shadowColor} transition-transform hover:-translate-y-1`}>
         
         {/* Header */}
-        <div className={`flex justify-between items-center mb-4 border-b-2 border-dashed border-[#0D0F14] pb-3`}>
-          <div className="flex items-center gap-2">
+        <div className="mb-3 border-b-2 border-dashed border-[#0D0F14] pb-3">
+          <div className="flex items-center gap-2 mb-1">
             {isWin ? <CheckCircle2 size={20} className={mainColor} strokeWidth={3} /> : <AlertCircle size={20} className={mainColor} strokeWidth={3} />}
             <span className={`text-[12px] font-black uppercase tracking-widest ${mainColor}`}>
               {isWin ? 'DEU GREEN! 🤑' : 'DEU RED... 😭'}
             </span>
           </div>
-          <span className="text-[9px] text-gray-500 font-bold uppercase tracking-wider max-w-[100px] text-right truncate">
+          <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider w-full block">
             {match}
           </span>
         </div>
