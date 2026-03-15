@@ -12,7 +12,7 @@ export const config = {
   apiFootball: {
     key: process.env.API_FOOTBALL_KEY,
     baseUrl: 'https://v3.football.api-sports.io',
-    dailyLimit: 100,
-    safeLimit: 85, // parar em 85% do limite
+    dailyLimit: 7500,
+    safeLimit: 6000, // parar em ~80% do limite (plano PRO)
   },
 };

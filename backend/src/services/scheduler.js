@@ -3,23 +3,23 @@ import { generateDailyBets, settlePendingBets, ensureContinuousBet } from './bet
 import { logger } from '../lib/logger.js';
 
 /**
- * Orçamento de chamadas à API — Plano Basic (100/dia):
+ * Orçamento de chamadas à API — Plano PRO (7.500/dia):
  *
  * 08:00 — Gerar apostas do dia
  *   - 1 chamada por liga × 5 ligas = 5 chamadas (fixtures)
- *   - 1 chamada por aposta × 3 apostas = 3 chamadas (odds)
- *   Subtotal: ~8 chamadas
+ *   - 1 chamada por aposta × 5 apostas = 5 chamadas (odds)
+ *   Subtotal: ~10 chamadas
  *
  * 12:00, 18:00, 23:30 — Verificar resultados
- *   - 1 chamada por aposta pendente × máx 5 = 5 × 3 rodadas = 15 chamadas
- *   Subtotal: ~15 chamadas
+ *   - 1 chamada por aposta pendente × máx 10 = 10 × 3 rodadas = 30 chamadas
+ *   Subtotal: ~30 chamadas
  *
  * 14:00 — Garantir aposta contínua (só chama API se upcoming_bets estiver vazio)
  *   - Caso normal (já há apostas): 0 chamadas
- *   - Caso vazio: até 5 ligas prioritárias + 5 fallback = ~10 chamadas (raro)
+ *   - Caso vazio: até 10 ligas × 14 dias = ~10 chamadas (raro)
  *   Subtotal: ~0–10 chamadas
  *
- * Total estimado: ~23 chamadas/dia normais, ~33 em dias sem jogos
+ * Total estimado: ~40 chamadas/dia — margem enorme no plano PRO (7.500/dia)
  */
 
 async function runJob(name, fn) {

@@ -61,8 +61,8 @@ function randomBetAmount() {
  * @param {number} opts.daysAhead - Janela de busca em dias (padrão: 5)
  * @param {Array}  opts.leagues   - Lista de ligas a usar (padrão: PRIORITY_LEAGUES)
  */
-export async function generateDailyBets({ daysAhead = 5, leagues = PRIORITY_LEAGUES } = {}) {
-  const MAX_NEW_BETS = 3;
+export async function generateDailyBets({ daysAhead = 7, leagues = PRIORITY_LEAGUES, maxBets = 5 } = {}) {
+  const MAX_NEW_BETS = maxBets;
   logger.info('bet_engine_start', { max_bets: MAX_NEW_BETS, days_ahead: daysAhead, leagues: leagues.length });
 
   // Pegar IDs de jogos que já têm aposta pendente para não duplicar
