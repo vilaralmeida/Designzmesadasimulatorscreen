@@ -68,7 +68,7 @@ export function Onboarding() {
   const isLast = slide === SLIDES.length - 1;
 
   return (
-    <div className="fixed inset-0 flex items-end justify-center p-4 pb-24 bg-black/80 backdrop-blur-sm" style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" style={{ zIndex: 9999 }}>
       <div className={`w-full max-w-md bg-[#1A1D24] border-4 border-black rounded-2xl shadow-[8px_8px_0_0_#000] transform ${s.rotate} transition-all`}>
 
         {/* Close */}
