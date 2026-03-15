@@ -17,7 +17,6 @@ jobs:
 
       - name: Deploy
         working-directory: backend
-        run: railway up --detach
+        run: railway up --service f0c86e5b-d158-4492-9772-8666e1ab2b3b --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: 89c80ea3-f0a7-48a1-a134-581d33c6ec7c
