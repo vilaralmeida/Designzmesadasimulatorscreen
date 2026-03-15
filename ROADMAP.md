@@ -23,10 +23,16 @@
 | 12 | Módulo de Engajamento — Ranking de Competidores | ✅ Concluído |
 | 13 | Card "Bata o Duende" na Home + reorganização de cards | ✅ Concluído |
 | 14 | Chat Duende integrado ao perfil logado no Ranking | ✅ Concluído |
-| 15 | Domínio pindaiba.red (Vercel) — DNS em propagação | ✅ Concluído |
-| 16 | Monitoramento (Sentry + UptimeRobot) | 🔲 Pendente |
-| 17 | PWA — instalar como app no celular | 🔲 Pendente |
-| 18 | Timer de próxima rodada + compartilhamento de ranking | 🔲 Pendente |
+| 15 | Domínio pindaiba.red (Vercel) | ✅ Concluído |
+| 16 | Timer de rodada + Compartilhamento no Ranking | ✅ Concluído |
+| 17 | Histórico de Rodadas no Ranking | ✅ Concluído |
+| 18 | Fix: saldo da Home não atualizava (bug bankroll.id) | ✅ Concluído |
+| 19 | Frases do Duende expandidas (13 → 43 quotes) | ✅ Concluído |
+| 20 | Fix: nome do jogo truncado no BetHistoryCard | ✅ Concluído |
+| 21 | Monitoramento (Sentry + UptimeRobot) | 🔲 Pendente |
+| 22 | PWA — instalar como app no celular | 🔲 Pendente |
+| 23 | Onboarding — explicação para novos usuários | 🔲 Pendente |
+| 24 | Página de perfil do usuário | 🔲 Pendente |
 
 ---
 
@@ -466,4 +472,4 @@ Ao liquidar apostas do dia (settlePendingBets):
 
 ---
 
-*Última atualização: 2026-03-15 — Fases 1–15 concluídas. Produção ativa em pindaiba.red. CI/CD via GitHub Actions. Pendentes: monitoramento, PWA, timer de rodada.*
+*Última atualização: 2026-03-15 — Fases 1–20 concluídas. Produção ativa em pindaiba.red. CI/CD via GitHub Actions. Pendentes: monitoramento, PWA, onboarding, perfil.*
