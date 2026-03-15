@@ -67,22 +67,53 @@ export default function Ranking() {
   const [selectedBets, setSelectedBets] = useState<Record<string, { betType: 'home' | 'draw' | 'away'; amount: number }>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [loadingRanking, setLoadingRanking] = useState(true);
-  const [activeTab, setActiveTab] = useState<'ranking' | 'games' | 'chat'>('ranking');
+  const [activeTab, setActiveTab] = useState<'ranking' | 'games' | 'history' | 'chat'>('ranking');
   const [tips, setTips] = useState<Tip[]>([]);
   const [suggestion, setSuggestion] = useState('');
   const [sending, setSending] = useState(false);
   const [tipError, setTipError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const timeLeft = useRoundTimer();
 
   useEffect(() => {
     loadRanking();
+    loadHistory();
     api.getTips().then(res => setTips(res.data)).catch(() => {});
     if (user) {
       loadGames();
       loadMyBets();
     }
   }, [user]);
+
+  async function loadHistory() {
+    setLoadingHistory(true);
+    try {
+      const BASE = import.meta.env.VITE_API_URL || '';
+      const res = await fetch(`${BASE}/api/ranking/history?days=30`);
+      const raw: any[] = await res.json();
+
+      // Agrupar por data
+      const byDate: Record<string, any[]> = {};
+      for (const entry of raw) {
+        if (!byDate[entry.round_date]) byDate[entry.round_date] = [];
+        byDate[entry.round_date].push(entry);
+      }
+
+      // Montar resumo por rodada
+      const rounds = Object.entries(byDate).map(([date, entries]) => {
+        const duende = entries.find((e: any) => e.user_id === null);
+        const humans = entries.filter((e: any) => e.user_id !== null);
+        const winner = humans[0] ?? null;
+        const myEntry = user ? humans.find((e: any) => e.user_id === user.id) : null;
+        return { date, duende, winner, myEntry, total: humans.length };
+      });
+
+      setHistory(rounds);
+    } catch { /* ignore */ }
+    setLoadingHistory(false);
+  }
 
   async function submitTip(e: React.FormEvent) {
     e.preventDefault();
@@ -219,11 +250,11 @@ export default function Ranking() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        {(['ranking', ...(user ? ['games'] : []), 'chat'] as const).map(tab => (
+      <div className="grid grid-cols-2 gap-2">
+        {(['ranking', ...(user ? ['games'] : []), 'history', 'chat'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab as any)}
-            className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl border-2 transition-all ${activeTab === tab ? 'bg-[#FFB800] text-black border-black shadow-[3px_3px_0_0_#000]' : 'bg-[#1A1D24] text-[#4A4E58] border-[#333]'}`}>
-            {tab === 'ranking' ? '🏆 Ranking' : tab === 'games' ? '⚽ Palpites' : '💬 Duende'}
+            className={`py-2 text-xs font-black uppercase tracking-wider rounded-xl border-2 transition-all ${activeTab === tab ? 'bg-[#FFB800] text-black border-black shadow-[3px_3px_0_0_#000]' : 'bg-[#1A1D24] text-[#4A4E58] border-[#333]'}`}>
+            {tab === 'ranking' ? '🏆 Ranking' : tab === 'games' ? '⚽ Palpites' : tab === 'history' ? '📅 Histórico' : '💬 Duende'}
           </button>
         ))}
       </div>
@@ -356,6 +387,88 @@ export default function Ranking() {
                       )}
                     </>
                   )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {/* Histórico de Rodadas Tab */}
+      {activeTab === 'history' && (
+        <div className="flex flex-col gap-3">
+          {loadingHistory ? (
+            <div className="text-center text-[#4A4E58] text-sm py-8 font-mono">Carregando histórico...</div>
+          ) : history.length === 0 ? (
+            <div className="bg-[#1A1D24] border-4 border-[#333] rounded-2xl p-6 text-center">
+              <div className="text-4xl mb-2">📅</div>
+              <div className="text-[#4A4E58] text-sm font-mono">Nenhuma rodada encerrada ainda.</div>
+            </div>
+          ) : (
+            history.map(round => {
+              const date = new Date(round.date + 'T12:00:00');
+              const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+              const weekday = date.toLocaleDateString('pt-BR', { weekday: 'short' });
+              const myAbove = round.myEntry?.vs_duende === 'above';
+              const myBelow = round.myEntry?.vs_duende === 'below';
+
+              return (
+                <div key={round.date} className="bg-[#1A1D24] border-2 border-[#333] rounded-2xl p-4 flex flex-col gap-3">
+                  {/* Date + participants */}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[#FFB800] font-black text-sm">{dateStr}</span>
+                      <span className="text-[#4A4E58] text-xs font-mono ml-2">{weekday}</span>
+                    </div>
+                    <span className="text-[#4A4E58] text-[10px] font-mono border border-[#333] px-2 py-0.5 rounded">
+                      {round.total} {round.total === 1 ? 'jogador' : 'jogadores'}
+                    </span>
+                  </div>
+
+                  <div className="border-t border-dashed border-[#333] pt-3 flex flex-col gap-2">
+                    {/* Winner */}
+                    {round.winner && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🥇</span>
+                          <span className="text-white text-xs font-black truncate max-w-[140px]">{round.winner.username}</span>
+                        </div>
+                        <span className="text-[#00D46A] text-xs font-black">R${Number(round.winner.balance).toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {/* Duende */}
+                    {round.duende && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">👻</span>
+                          <span className="text-[#B854FF] text-xs font-black">Duende Chicão</span>
+                        </div>
+                        <span className="text-[#B854FF] text-xs font-black">R${Number(round.duende.balance).toFixed(2)}</span>
+                      </div>
+                    )}
+
+                    {/* My result */}
+                    {round.myEntry && (
+                      <div className={`flex items-center justify-between mt-1 pt-2 border-t border-dashed ${myAbove ? 'border-[#00D46A]/30' : 'border-[#FF4B4B]/30'}`}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{myAbove ? '🟢' : myBelow ? '🔴' : '⚪'}</span>
+                          <div>
+                            <span className="text-[#FFB800] text-xs font-black">Você — {round.myEntry.position}º lugar</span>
+                            <div className={`text-[9px] font-mono ${myAbove ? 'text-[#00D46A]' : 'text-[#FF4B4B]'}`}>
+                              {myAbove ? 'acima' : myBelow ? 'abaixo' : 'igual'} do Duende
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white text-xs font-black">R${Number(round.myEntry.balance).toFixed(2)}</div>
+                          <div className={`text-[9px] font-mono ${round.myEntry.daily_pnl >= 0 ? 'text-[#00D46A]' : 'text-[#FF4B4B]'}`}>
+                            {round.myEntry.daily_pnl >= 0 ? '+' : ''}R${Number(round.myEntry.daily_pnl).toFixed(2)} no dia
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })
