@@ -16,11 +16,17 @@
 | 5 | Página de Stats com dados reais | ✅ Concluído |
 | 6 | Página Ajuda — PIX e QR Code reais | ✅ Concluído |
 | 7 | Painel Admin (frontend UI) | ✅ Concluído |
-| 8 | Deploy (Vercel + Railway + CI/CD) | 🔲 Pendente |
+| 8 | Deploy (Vercel + Railway + CI/CD via GitHub Actions) | ✅ Concluído |
 | 9 | Monitoramento (Sentry + UptimeRobot) | 🔲 Pendente |
 | 10 | Extras: PWA · Cache · Fallback offline | 🔲 Pendente |
-| 11 | Aposta contínua — sempre ter pelo menos 1 aposta ativa | ✅ Concluído |
-| 12 | Módulo de Engajamento — Ranking de Competidores | 🔲 Pendente |
+| 11 | Aposta contínua — 25 ligas, janela 14 dias, máx 8/dia | ✅ Concluído |
+| 12 | Módulo de Engajamento — Ranking de Competidores | ✅ Concluído |
+| 13 | Card "Bata o Duende" na Home + reorganização de cards | ✅ Concluído |
+| 14 | Chat Duende integrado ao perfil logado no Ranking | ✅ Concluído |
+| 15 | Domínio pindaiba.red (Vercel) — DNS em propagação | ✅ Concluído |
+| 16 | Monitoramento (Sentry + UptimeRobot) | 🔲 Pendente |
+| 17 | PWA — instalar como app no celular | 🔲 Pendente |
+| 18 | Timer de próxima rodada + compartilhamento de ranking | 🔲 Pendente |
 
 ---
 
@@ -460,4 +466,4 @@ Ao liquidar apostas do dia (settlePendingBets):
 
 ---
 
-*Última atualização: 2026-03-15 — Fases 1–11 concluídas. Deploy ativo. Fase 12 planejada: Ranking de Competidores.*
+*Última atualização: 2026-03-15 — Fases 1–15 concluídas. Produção ativa em pindaiba.red. CI/CD via GitHub Actions. Pendentes: monitoramento, PWA, timer de rodada.*
