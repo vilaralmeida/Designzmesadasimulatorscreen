@@ -319,7 +319,7 @@ export async function settlePendingBets() {
     // Atualizar bankroll
     const { data: bankroll } = await supabase
       .from('bankroll')
-      .select('balance')
+      .select('id, balance')
       .order('updated_at', { ascending: false })
       .limit(1)
       .single();
