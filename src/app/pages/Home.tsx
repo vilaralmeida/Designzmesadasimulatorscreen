@@ -5,6 +5,7 @@ import { BankrollChart } from '../components/BankrollChart';
 import { BetHistoryCard } from '../components/BetHistoryCard';
 import { UpcomingBetsTable } from '../components/UpcomingBetsTable';
 import { BalanceCard } from '../components/BalanceCard';
+import { BeatDuendeCard } from '../components/BeatDuendeCard';
 import exampleImage from 'figma:asset/5904eb9eb72b5560bdc24189852159dc8ae88496.png';
 import winImage from 'figma:asset/fff309965f78ba749f829df22aca85c32448399d.png';
 import lossImage from 'figma:asset/38de288c4fd63109016bd967f005d4a38821089c.png';
@@ -59,6 +60,8 @@ export default function Home() {
       </div>
 
       <BalanceCard />
+
+      <BeatDuendeCard />
 
       <UpcomingBetsTable />
 
