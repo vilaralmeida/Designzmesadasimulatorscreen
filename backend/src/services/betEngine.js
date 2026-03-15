@@ -7,6 +7,7 @@ const PRIORITY_LEAGUES = [
   // Brasil
   { id: 71,  name: 'Brasileirão Série A', country: 'Brazil'      },
   { id: 72,  name: 'Brasileirão Série B', country: 'Brazil'      },
+  { id: 75,  name: 'Brasileirão Série C', country: 'Brazil'      },
   { id: 73,  name: 'Copa do Brasil',      country: 'Brazil'      },
   // Europa — top 5
   { id: 39,  name: 'Premier League',      country: 'England'     },
