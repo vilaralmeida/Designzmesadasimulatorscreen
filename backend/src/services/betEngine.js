@@ -11,6 +11,15 @@ const PRIORITY_LEAGUES = [
   { id: 94,  name: 'Primeira Liga',       country: 'Portugal' },
 ];
 
+// ── Ligas de fallback (ativadas só quando não há jogos nas prioritárias) ──
+const FALLBACK_LEAGUES = [
+  { id: 2,   name: 'Champions League',   country: 'Europe'   },
+  { id: 61,  name: 'Ligue 1',            country: 'France'   },
+  { id: 88,  name: 'Eredivisie',         country: 'Netherlands' },
+  { id: 253, name: 'MLS',                country: 'USA'      },
+  { id: 262, name: 'Liga MX',            country: 'Mexico'   },
+];
+
 // ── Frases do Duende Chicão ─────────────────────────────────
 const DUENDE_QUOTES = [
   'É CERTO, pai! Pode apostar!',
@@ -48,12 +57,13 @@ function randomBetAmount() {
 
 /**
  * Gera apostas aleatórias para os próximos jogos.
- * Chamado pelo scheduler 1x/dia.
- * Limita a 3 apostas novas por dia para proteger a quota da API.
+ * @param {object} opts
+ * @param {number} opts.daysAhead - Janela de busca em dias (padrão: 5)
+ * @param {Array}  opts.leagues   - Lista de ligas a usar (padrão: PRIORITY_LEAGUES)
  */
-export async function generateDailyBets() {
+export async function generateDailyBets({ daysAhead = 5, leagues = PRIORITY_LEAGUES } = {}) {
   const MAX_NEW_BETS = 3;
-  logger.info('bet_engine_start', { max_bets: MAX_NEW_BETS });
+  logger.info('bet_engine_start', { max_bets: MAX_NEW_BETS, days_ahead: daysAhead, leagues: leagues.length });
 
   // Pegar IDs de jogos que já têm aposta pendente para não duplicar
   const { data: existing } = await supabase
@@ -65,12 +75,12 @@ export async function generateDailyBets() {
 
   const newBets = [];
 
-  for (const league of PRIORITY_LEAGUES) {
+  for (const league of leagues) {
     if (newBets.length >= MAX_NEW_BETS) break;
 
     let fixtures = [];
     try {
-      fixtures = await fetchUpcomingFixtures(league.id, 5);
+      fixtures = await fetchUpcomingFixtures(league.id, daysAhead);
     } catch (err) {
       logger.error('fixture_fetch_failed', { league: league.name, message: err.message });
       continue;
@@ -139,6 +149,42 @@ export async function generateDailyBets() {
 
   logger.info('bet_engine_done', { bets_generated: newBets.length });
   return newBets;
+}
+
+/**
+ * Garante que sempre haja pelo menos 1 aposta pendente.
+ * Chamado pelo scheduler às 14h se upcoming_bets estiver vazio.
+ * Tenta ligas prioritárias com janela ampliada (14 dias),
+ * depois ligas de fallback se ainda não encontrar jogos.
+ */
+export async function ensureContinuousBet() {
+  const { data: pending } = await supabase
+    .from('upcoming_bets')
+    .select('id')
+    .eq('status', 'pending')
+    .limit(1);
+
+  if (pending?.length > 0) {
+    logger.info('ensure_bet_ok', { reason: 'Já há aposta pendente' });
+    return;
+  }
+
+  logger.info('ensure_bet_empty', { reason: 'Sem apostas pendentes — tentando gerar com janela ampliada' });
+
+  // Tentativa 1: ligas prioritárias com 14 dias
+  let bets = await generateDailyBets({ daysAhead: 14, leagues: PRIORITY_LEAGUES });
+
+  if (bets.length === 0) {
+    logger.warn('ensure_bet_fallback', { reason: 'Ligas prioritárias vazias — tentando ligas de fallback' });
+    // Tentativa 2: ligas de fallback com 14 dias
+    bets = await generateDailyBets({ daysAhead: 14, leagues: FALLBACK_LEAGUES });
+  }
+
+  if (bets.length === 0) {
+    logger.warn('ensure_bet_none', { reason: 'Nenhum jogo encontrado em nenhuma liga — aguardando próximo ciclo' });
+  } else {
+    logger.info('ensure_bet_done', { bets_generated: bets.length });
+  }
 }
 
 /**
