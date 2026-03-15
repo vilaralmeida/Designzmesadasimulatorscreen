@@ -1,10 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { Trophy, TrendingUp, TrendingDown, Minus, LogIn, LogOut, Send, Lightbulb, MessageSquare } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Trophy, TrendingUp, TrendingDown, Minus, LogIn, LogOut, Send, Lightbulb, MessageSquare, Share2, Clock, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import type { RankingEntry } from '../../lib/supabase';
 import { api, Tip } from '../../lib/api';
 import { useNavigate } from 'react-router';
+
+function useRoundTimer() {
+  const [timeLeft, setTimeLeft] = useState('');
+  useEffect(() => {
+    function calc() {
+      const now = new Date();
+      // Meia-noite BRT = 03:00 UTC (BRT = UTC-3, sem horário de verão desde 2019)
+      const midnight = new Date();
+      midnight.setUTCHours(3, 0, 0, 0);
+      if (now.getUTCHours() >= 3) midnight.setUTCDate(midnight.getUTCDate() + 1);
+      const diff = Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000));
+      const h = Math.floor(diff / 3600).toString().padStart(2, '0');
+      const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+      const s = (diff % 60).toString().padStart(2, '0');
+      setTimeLeft(`${h}:${m}:${s}`);
+    }
+    calc();
+    const id = setInterval(calc, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return timeLeft;
+}
 
 function timeAgo(iso: string) {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -50,6 +72,8 @@ export default function Ranking() {
   const [suggestion, setSuggestion] = useState('');
   const [sending, setSending] = useState(false);
   const [tipError, setTipError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const timeLeft = useRoundTimer();
 
   useEffect(() => {
     loadRanking();
@@ -131,6 +155,23 @@ export default function Ranking() {
   }
 
   const duendeBalance = ranking.find(r => r.user_id === null)?.balance ?? 100;
+  const myEntry = ranking.find(r => r.user_id === user?.id);
+  const myPosition = myEntry ? ranking.findIndex(r => r.user_id === user?.id) + 1 : null;
+
+  async function handleShare() {
+    if (!myEntry || !myPosition) return;
+    const above = myEntry.balance > duendeBalance;
+    const emoji = above ? '🟢' : '🔴';
+    const status = above ? 'ACIMA do Duende' : 'tentando bater o Duende';
+    const text = `${emoji} Estou em ${myPosition}º lugar no Pindaiba!\nSaldo: R$${myEntry.balance.toFixed(2)} — ${status} Chicão!\nTenta me bater em pindaiba.red 👊`;
+    if (navigator.share) {
+      await navigator.share({ title: 'Pindaiba — Ranking', text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    }
+  }
 
   return (
     <div className="w-full max-w-md px-4 pt-6 pb-4 flex flex-col gap-4">
@@ -155,6 +196,24 @@ export default function Ranking() {
         ) : (
           <button onClick={signInWithGoogle} className="flex items-center gap-2 bg-[#FFB800] text-black font-black text-xs uppercase px-3 py-2 rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000] hover:translate-y-[-1px] transition-all">
             <LogIn size={14} /> Entrar
+          </button>
+        )}
+      </div>
+
+      {/* Timer + Share */}
+      <div className="flex items-center justify-between bg-[#1A1D24] border-2 border-[#333] rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2">
+          <Clock size={14} className="text-[#FFB800]" />
+          <div>
+            <div className="text-[9px] text-[#4A4E58] font-bold uppercase tracking-widest">Rodada encerra em</div>
+            <div className="text-[#FFB800] font-black text-sm font-mono tracking-widest">{timeLeft}</div>
+          </div>
+        </div>
+        {myEntry && (
+          <button onClick={handleShare}
+            className="flex items-center gap-1.5 bg-[#00D46A] text-black font-black text-[10px] uppercase px-3 py-1.5 rounded-lg border-2 border-black shadow-[2px_2px_0_0_#000] hover:-translate-y-0.5 transition-all">
+            {copied ? <Check size={12} /> : <Share2 size={12} />}
+            {copied ? 'Copiado!' : 'Compartilhar'}
           </button>
         )}
       </div>
