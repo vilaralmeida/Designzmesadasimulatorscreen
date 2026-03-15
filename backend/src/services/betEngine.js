@@ -45,19 +45,57 @@ const FALLBACK_LEAGUES = PRIORITY_LEAGUES.slice(10);
 
 // ── Frases do Duende Chicão ─────────────────────────────────
 const DUENDE_QUOTES = [
+  // Confiança inabalável
   'É CERTO, pai! Pode apostar!',
-  'Vi num sonho, Zé. Confia no processo!',
-  'A odd tá boa, manda ver!',
-  'Isso aqui é certeza absoluta... quase.',
-  'Nunca errei nessa. Nas outras sim, mas nessa não!',
-  'Mete tudo, Zé! É pra hoje!',
-  'Analisei tudo: forma, clima, horóscopo. É nós!',
   'Confia no Chicão! Dessa vez é diferente!',
   'Barbada total! Já tô contando o dinheiro!',
-  'Esse time é favorito do universo. Vai na fé!',
+  'Mete tudo, Zé! É pra hoje!',
   'Tô sentindo no ar... é green garantido!',
-  'Qualquer resultado que não for esse, o árbitro é culpado.',
+  'Nunca errei nessa. Nas outras sim, mas nessa não!',
+  'Isso aqui é certeza absoluta... quase.',
+
+  // Análise duvidosa
+  'Vi num sonho, Zé. Confia no processo!',
+  'A odd tá boa, manda ver!',
+  'Analisei tudo: forma, clima, horóscopo. É nós!',
   'Coloquei no papel, fiz as contas, é matemática pura!',
+  'Esse time é favorito do universo. Vai na fé!',
+  'Qualquer resultado que não for esse, o árbitro é culpado.',
+  'Assisti o último jogo deles de olho fechado. Confio muito.',
+  'O técnico me mandou mensagem no sonho dizendo que vão ganhar.',
+  'Fiz uma análise profunda de 30 segundos. Tá confirmado.',
+  'Minha vizinha que entende de futebol disse que é esse. Tamo dentro.',
+  'Consultei o tarô, o baralho e o bispo. Unânime: é esse!',
+  'A estatística não mente... quando eu entendo ela.',
+
+  // Culpa nos outros
+  'Se perder, é culpa da altitude. Não tem como errar.',
+  'Se der errado, a culpa é do gramado.',
+  'Esse resultado só não acontece se o goleiro tiver com fome.',
+  'A única forma de perder é se chover. E tá sol.',
+  'Só perde se o VAR entrar em colapso existencial.',
+
+  // Filosófico sem necessidade
+  'No futebol, quem não arrisca não petisca. Ou some o troco.',
+  'A vida é incerta. Mas essa aposta não.',
+  'Perder faz parte. Mas ganhar faz mais.',
+  'Zé, o dinheiro vai e volta. A fé fica.',
+  'Uma derrota não define um homem. Mas define o saldo.',
+
+  // Autoconfiança questionável
+  'Meu histórico tá um pouco manchado, mas esse é diferente.',
+  'Errei nas últimas sete, mas a oitava é especial, sinto no fígado.',
+  'Tô numa seca de acertos, mas estatisticamente, a hora chegou.',
+  'Não sou especialista, mas vejo coisas que especialista não vê.',
+  'Zé, já errei tanto que o acerto tá chegando. Lei dos grandes números.',
+
+  // Completamente sem sentido
+  'Sonhei com uma galinha laranja. Sinal claro: é esse aí.',
+  'O lateral-direito deles nasceu em ano bissexto. Nós ganhamos.',
+  'Vi uma cotia atravessando a rua perto do estádio. Ótimo presságio.',
+  'O número da camisa do artilheiro somado com o CEP do estádio dá 7. Sorte máxima.',
+  'Abri a Bíblia no aleatório e caiu em Vitória. Literalmente.',
+  'Meu gato olhou fixo pro celular quando mostrei esse jogo. Ele sabe.',
 ];
 
 // ── Odds simuladas quando API não retorna ───────────────────
