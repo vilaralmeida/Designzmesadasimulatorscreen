@@ -1,10 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Trophy, TrendingUp, TrendingDown, Minus, LogIn, LogOut } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Minus, LogIn, LogOut, Send, Lightbulb, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { supabase } from '../../lib/supabase';
 import type { RankingEntry } from '../../lib/supabase';
-import { api } from '../../lib/api';
+import { api, Tip } from '../../lib/api';
 import { useNavigate } from 'react-router';
+
+function timeAgo(iso: string) {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (diff < 60)    return 'Agora mesmo';
+  if (diff < 3600)  return `Há ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `Há ${Math.floor(diff / 3600)}h`;
+  return `Há ${Math.floor(diff / 86400)}d`;
+}
 
 type UpcomingBet = {
   id: string;
@@ -37,15 +45,40 @@ export default function Ranking() {
   const [selectedBets, setSelectedBets] = useState<Record<string, { betType: 'home' | 'draw' | 'away'; amount: number }>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [loadingRanking, setLoadingRanking] = useState(true);
-  const [activeTab, setActiveTab] = useState<'ranking' | 'games'>('ranking');
+  const [activeTab, setActiveTab] = useState<'ranking' | 'games' | 'chat'>('ranking');
+  const [tips, setTips] = useState<Tip[]>([]);
+  const [suggestion, setSuggestion] = useState('');
+  const [sending, setSending] = useState(false);
+  const [tipError, setTipError] = useState('');
 
   useEffect(() => {
     loadRanking();
+    api.getTips().then(res => setTips(res.data)).catch(() => {});
     if (user) {
       loadGames();
       loadMyBets();
     }
   }, [user]);
+
+  async function submitTip(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user || !profile) return;
+    setTipError('');
+    setSending(true);
+    try {
+      const newTip = await api.postTip({
+        name: profile.username,
+        email: user.email!,
+        suggestion,
+      });
+      setTips([newTip, ...tips]);
+      setSuggestion('');
+    } catch (err: any) {
+      setTipError(err.message || 'Erro ao enviar. Tenta de novo!');
+    } finally {
+      setSending(false);
+    }
+  }
 
   async function loadRanking() {
     setLoadingRanking(true);
@@ -127,16 +160,14 @@ export default function Ranking() {
       </div>
 
       {/* Tabs */}
-      {user && (
-        <div className="flex gap-2">
-          {(['ranking', 'games'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl border-2 transition-all ${activeTab === tab ? 'bg-[#FFB800] text-black border-black shadow-[3px_3px_0_0_#000]' : 'bg-[#1A1D24] text-[#4A4E58] border-[#333]'}`}>
-              {tab === 'ranking' ? '🏆 Ranking' : '⚽ Meus Palpites'}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex gap-2">
+        {(['ranking', ...(user ? ['games'] : []), 'chat'] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab as any)}
+            className={`flex-1 py-2 text-xs font-black uppercase tracking-wider rounded-xl border-2 transition-all ${activeTab === tab ? 'bg-[#FFB800] text-black border-black shadow-[3px_3px_0_0_#000]' : 'bg-[#1A1D24] text-[#4A4E58] border-[#333]'}`}>
+            {tab === 'ranking' ? '🏆 Ranking' : tab === 'games' ? '⚽ Palpites' : '💬 Duende'}
+          </button>
+        ))}
+      </div>
 
       {/* Ranking Tab */}
       {(activeTab === 'ranking' || !user) && (
@@ -269,6 +300,81 @@ export default function Ranking() {
                 </div>
               );
             })
+          )}
+        </div>
+      )}
+
+      {/* Chat com o Duende Tab */}
+      {activeTab === 'chat' && (
+        <div className="flex flex-col gap-4">
+          {/* Form — só para logados */}
+          {user && profile ? (
+            <form onSubmit={submitTip} className="bg-[#1A1D24] border-4 border-[#333] rounded-2xl p-4 shadow-[6px_6px_0_0_#000] relative">
+              <div className="absolute -top-3 -left-3 w-16 h-5 bg-[#B854FF]/80 -rotate-6 z-10" />
+              <p className="text-[#4A4E58] text-[10px] font-bold uppercase tracking-wider mb-3 text-center">
+                Tem uma "barbada"? Manda pro Chicão analisar!
+              </p>
+              <div className="flex items-center gap-2 mb-3 bg-[#0D0F14] px-3 py-2 rounded-xl border border-[#333]">
+                {profile.avatar_url
+                  ? <img src={profile.avatar_url} className="w-6 h-6 rounded-full" />
+                  : <div className="w-6 h-6 rounded-full bg-[#333] flex items-center justify-center text-xs">{profile.username[0].toUpperCase()}</div>
+                }
+                <span className="text-xs font-black text-[#B854FF]">{profile.username}</span>
+              </div>
+              <div className="relative mb-3">
+                <Lightbulb size={14} className="absolute left-3 top-3 text-[#4A4E58]" />
+                <textarea
+                  placeholder="Qual a boa de hoje?"
+                  value={suggestion}
+                  onChange={e => setSuggestion(e.target.value)}
+                  required
+                  maxLength={500}
+                  className="w-full bg-[#0D0F14] border-2 border-[#4A4E58] rounded-xl py-2 pl-9 pr-3 text-white font-mono text-sm focus:border-[#B854FF] focus:outline-none transition-colors placeholder:text-[#4A4E58] min-h-[80px] resize-none"
+                />
+              </div>
+              {tipError && <p className="text-[#FF4B4B] text-[10px] font-black uppercase mb-2 text-center">{tipError}</p>}
+              <button type="submit" disabled={sending}
+                className="w-full bg-[#B854FF] text-black font-black uppercase tracking-widest py-3 rounded-xl border-4 border-black shadow-[4px_4px_0_0_#000] hover:-translate-y-1 hover:shadow-[6px_6px_0_0_#000] active:translate-y-1 active:shadow-none transition-all flex justify-center items-center gap-2 disabled:opacity-60">
+                <Send size={16} strokeWidth={3} />
+                {sending ? 'Mandando...' : 'Mandar Palpite'}
+              </button>
+            </form>
+          ) : (
+            <div className="bg-[#1A1D24] border-4 border-[#333] rounded-2xl p-6 text-center">
+              <div className="text-3xl mb-2">👻</div>
+              <p className="text-[#4A4E58] text-sm font-mono mb-4">Entre para falar com o Duende</p>
+              <button onClick={signInWithGoogle}
+                className="flex items-center gap-2 mx-auto bg-[#B854FF] text-black font-black text-xs uppercase px-4 py-2 rounded-xl border-2 border-black shadow-[3px_3px_0_0_#000]">
+                <LogIn size={14} /> Entrar com Google
+              </button>
+            </div>
+          )}
+
+          {/* Lista de mensagens */}
+          <div className="flex items-center gap-2 border-b-2 border-dashed border-[#4A4E58] pb-2">
+            <MessageSquare size={14} className="text-[#B854FF]" />
+            <span className="text-[11px] font-black text-[#4A4E58] uppercase tracking-widest">Conselhos Duvidosos</span>
+          </div>
+
+          {tips.length === 0 ? (
+            <p className="text-center text-[#4A4E58] text-xs font-mono py-4">Nenhum conselho ainda. Seja o primeiro!</p>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {tips.map((tip, i) => (
+                <div key={tip.id} className={`bg-[#1A1D24] border-4 border-[#0D0F14] rounded-xl p-3 shadow-[4px_4px_0_0_#000] transform ${i % 2 === 0 ? '-rotate-1' : 'rotate-1'}`}>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[#B854FF] font-black text-[11px] uppercase tracking-wider">{tip.name}</span>
+                    <span className="text-[#4A4E58] text-[8px] uppercase tracking-widest bg-[#0D0F14] px-2 py-1 rounded">
+                      {timeAgo(tip.created_at)}
+                    </span>
+                  </div>
+                  <div className="bg-[#0D0F14] p-3 rounded-lg border-2 border-[#333] relative">
+                    <p className="text-white text-xs font-bold leading-relaxed">"{tip.suggestion}"</p>
+                    <div className="absolute -top-2 left-4 w-3 h-3 bg-[#0D0F14] border-t-2 border-l-2 border-[#333] rotate-45" />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}
