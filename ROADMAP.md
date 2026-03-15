@@ -19,6 +19,8 @@
 | 8 | Deploy (Vercel + Railway + CI/CD) | 🔲 Pendente |
 | 9 | Monitoramento (Sentry + UptimeRobot) | 🔲 Pendente |
 | 10 | Extras: PWA · Cache · Fallback offline | 🔲 Pendente |
+| 11 | Aposta contínua — sempre ter pelo menos 1 aposta ativa | ✅ Concluído |
+| 12 | Módulo de Engajamento — Ranking de Competidores | 🔲 Pendente |
 
 ---
 
@@ -292,4 +294,170 @@ Evitar chamadas repetidas dentro da mesma hora. Usar variável em memória no ba
 
 ---
 
-*Última atualização: 2026-03-14 — Fases 1–5 concluídas (Backend, API-Football, Frontend, Tips/Stats, Admin Panel, Página Ajuda PIX)*
+---
+
+## 🔲 FASE 11 — Aposta Contínua (Pendente)
+
+**Objetivo:** Garantir que o Zé Mesada tenha sempre pelo menos 1 aposta pendente ativa, mesmo em dias sem jogos nas ligas principais.
+
+### Problema atual
+O scheduler gera apostas uma vez por dia às 08h, mas se não houver jogos nos próximos 7 dias nas ligas monitoradas, a tabela fica vazia e o app parece inativo.
+
+### Estratégias a investigar
+
+| Estratégia | Descrição | Custo de quota |
+|------------|-----------|----------------|
+| **Ampliar janela de busca** | Aumentar `daysAhead` de 7 para 14 dias | Baixo |
+| **Ampliar ligas monitoradas** | Adicionar ligas de outros continentes (MLS, Eredivisie, Ligue 1, etc.) para cobrir mais datas | Baixo |
+| **Busca de fallback** | Se `generateDailyBets` retornar 0 apostas, tentar ligas secundárias automaticamente | Baixo |
+| **Verificação no scheduler** | Adicionar job às 14h: se `upcoming_bets` estiver vazio, forçar nova geração | Zero (sem chamada extra à API) |
+| **Aposta simulada de contingência** | Se não houver jogo real disponível, gerar aposta em jogo simulado com odds fictícias e flag `simulated: true` | Zero |
+
+### Implementação recomendada (sem aumentar quota)
+
+1. No `scheduler.js`, adicionar verificação às 14h:
+   - Contar apostas pendentes em `upcoming_bets`
+   - Se 0 → chamar `generateDailyBets()` com `daysAhead=14` e lista expandida de ligas
+2. Em `betEngine.js`, ampliar `PRIORITY_LEAGUES` com ligas de backup:
+   - Ligue 1 (61), Eredivisie (88), Liga MX (262), MLS (253), Champions League (2)
+3. Se ainda retornar 0 → logar aviso e aguardar próximo ciclo (não gerar aposta fake)
+
+### Critério de sucesso
+- `upcoming_bets` nunca fica vazio por mais de 24h
+- Sem aumento relevante no consumo de quota da API
+
+---
+
+---
+
+## 🔲 FASE 12 — Módulo de Engajamento: Ranking de Competidores
+
+**Objetivo:** Permitir que usuários reais façam seus próprios palpites nos mesmos jogos do Zé Mesada e compitam contra o Duende Chicão num ranking diário.
+
+---
+
+### Conceito
+
+- Cada usuário começa com **R$100 virtual** (igual ao Zé)
+- Ao abrir o app, vê os **mesmos jogos** que o Duende vai apostar no dia
+- Faz seu palpite: escolhe o time/empate e o valor (R$1–R$10)
+- No final do dia, o **ranking é atualizado** com o saldo de cada um
+- Quem está **acima do Duende** → verde; **abaixo** → vermelho
+- Cada dia é uma nova rodada — os saldos acumulam entre as rodadas
+
+---
+
+### Arquitetura
+
+#### Banco de Dados — novas tabelas Supabase
+
+```sql
+-- Perfis de usuário (complementa auth.users do Supabase Auth)
+user_profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users,
+  username text UNIQUE NOT NULL,
+  avatar_url text,
+  balance numeric DEFAULT 100,
+  created_at timestamptz DEFAULT now()
+)
+
+-- Apostas feitas pelos usuários nos jogos do dia
+user_bets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES user_profiles,
+  upcoming_bet_id uuid REFERENCES upcoming_bets,  -- jogo que o Duende também apostou
+  bet_type text CHECK (bet_type IN ('home','draw','away')),
+  amount numeric CHECK (amount BETWEEN 1 AND 10),
+  odds numeric,
+  result text,        -- 'win' | 'loss' | null (pending)
+  payout numeric,
+  created_at timestamptz DEFAULT now(),
+  UNIQUE (user_id, upcoming_bet_id)  -- 1 palpite por jogo por usuário
+)
+
+-- Snapshot diário do ranking (gerado pelo scheduler ao liquidar apostas)
+daily_ranking (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  round_date date NOT NULL,
+  user_id uuid REFERENCES user_profiles,
+  balance numeric,
+  daily_pnl numeric,   -- ganho/perda no dia
+  position int,
+  vs_duende text,      -- 'above' | 'below' | 'equal'
+  created_at timestamptz DEFAULT now()
+)
+```
+
+---
+
+### Backend — novos endpoints
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| POST | `/auth/register` | Cria conta (Supabase Auth + user_profiles) |
+| POST | `/auth/login` | Login, retorna JWT do Supabase |
+| GET | `/api/me` | Perfil + saldo do usuário logado |
+| GET | `/api/games/today` | Jogos do dia disponíveis para palpite |
+| POST | `/api/user-bets` | Submete palpite do usuário |
+| GET | `/api/user-bets` | Histórico de palpites do usuário |
+| GET | `/api/ranking` | Ranking do dia (todos + posição do Duende) |
+| GET | `/api/ranking/history` | Histórico de rounds anteriores |
+
+**Auth:** JWT do Supabase passado no header `Authorization: Bearer <token>`
+
+---
+
+### Frontend — novas páginas e componentes
+
+| Página / Componente | Descrição |
+|---------------------|-----------|
+| `LoginPage.tsx` | Login / cadastro com email+senha |
+| `GameCard.tsx` | Card de jogo do dia com botões Casa / Empate / Fora + slider de valor |
+| `MyBetsPage.tsx` | Palpites do usuário no dia + resultado pendente/ganhou/perdeu |
+| `RankingPage.tsx` | Tabela do ranking: posição, avatar, username, saldo, vs Duende (verde/vermelho) |
+| `ProfileCard.tsx` | Saldo atual do usuário + comparação com Duende |
+
+**Nova aba no tab bar:** Ranking (ícone de troféu)
+
+---
+
+### Scheduler — nova rotina
+
+```
+Ao liquidar apostas do dia (settlePendingBets):
+  1. Para cada user_bet pendente com jogo finalizado:
+     - Calcular resultado (win/loss)
+     - Atualizar user_profiles.balance
+  2. Gerar snapshot em daily_ranking para todos os usuários
+  3. Calcular posição do Duende no ranking
+  4. Marcar rodada do dia como encerrada
+```
+
+---
+
+### Regras de negócio
+
+- Palpites só são aceitos **antes do horário do jogo**
+- Usuário pode apostar em **quantos jogos quiser** do dia (1 por jogo)
+- Saldo não vai abaixo de R$0 — se zerar, usuário recebe R$10 de bônus para continuar
+- Ranking exibe no máximo **top 50** + posição do usuário logado
+- Duende aparece sempre no ranking como participante fixo
+
+---
+
+### Dependências técnicas
+
+- **Supabase Auth** — já incluído no `@supabase/supabase-js`, sem custo adicional
+- **RLS** — policies por `auth.uid()` nas tabelas `user_bets` e `user_profiles`
+- **Frontend auth context** — `AuthContext` + `useAuth` hook para proteger rotas
+
+---
+
+### Critério de sucesso
+- Usuário consegue se cadastrar, fazer palpite e ver seu nome no ranking
+- Ranking atualiza automaticamente após liquidação das apostas
+- Verde/vermelho vs Duende visível claramente
+
+---
+
+*Última atualização: 2026-03-15 — Fases 1–11 concluídas. Deploy ativo. Fase 12 planejada: Ranking de Competidores.*

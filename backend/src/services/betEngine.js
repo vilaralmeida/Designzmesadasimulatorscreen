@@ -278,6 +278,9 @@ export async function settlePendingBets() {
       .update({ status: 'settled' })
       .eq('id', bet.id);
 
+    // Liquidar user_bets para este jogo
+    await settleUserBets(bet.id, actualResult);
+
     logger.info('bet_settled', {
       match: `${bet.home_team} x ${bet.away_team}`,
       result,
@@ -286,4 +289,133 @@ export async function settlePendingBets() {
       new_balance: newBalance,
     });
   }
+
+  // Gerar snapshot do ranking após liquidar todas as apostas
+  await generateDailyRanking();
+}
+
+/**
+ * Liquida os palpites dos usuários para um jogo finalizado.
+ */
+async function settleUserBets(upcomingBetId, actualResult) {
+  const { data: userBets } = await supabase
+    .from('user_bets')
+    .select('*')
+    .eq('upcoming_bet_id', upcomingBetId)
+    .is('result', null);
+
+  if (!userBets?.length) return;
+
+  for (const ub of userBets) {
+    const won = ub.bet_type === actualResult;
+    const payout = won ? +(ub.amount * ub.odds).toFixed(2) : 0;
+    const result = won ? 'win' : 'loss';
+    const delta = won ? payout - ub.amount : -ub.amount;
+
+    // Atualizar resultado da aposta
+    await supabase.from('user_bets')
+      .update({ result, payout })
+      .eq('id', ub.id);
+
+    // Atualizar saldo do usuário
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('balance')
+      .eq('id', ub.user_id)
+      .single();
+
+    if (profile) {
+      const newBalance = Math.max(0, +(profile.balance + delta).toFixed(2));
+      // Bônus se zerar
+      const finalBalance = newBalance === 0 ? 10 : newBalance;
+      await supabase.from('user_profiles')
+        .update({ balance: finalBalance })
+        .eq('id', ub.user_id);
+    }
+  }
+}
+
+/**
+ * Gera snapshot diário do ranking com todos os usuários + Duende.
+ */
+async function generateDailyRanking() {
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Saldo do Duende (bankroll atual)
+  const { data: bankroll } = await supabase
+    .from('bankroll')
+    .select('balance')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .single();
+  const duendeBalance = bankroll?.balance ?? 100;
+
+  // Buscar todos os perfis
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('id, username, avatar_url, balance');
+
+  if (!profiles?.length && duendeBalance === 100) return;
+
+  // Calcular P&L do dia por usuário
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const entries = [];
+
+  // Duende
+  const { data: duendeBets } = await supabase
+    .from('bets')
+    .select('amount, payout, result')
+    .gte('match_date', startOfDay.toISOString());
+
+  const duendePnl = (duendeBets ?? []).reduce((acc, b) => {
+    return acc + (b.result === 'win' ? b.payout - b.amount : -b.amount);
+  }, 0);
+
+  entries.push({
+    round_date: today,
+    user_id: null,
+    username: 'Duende Chicão',
+    avatar_url: null,
+    balance: duendeBalance,
+    daily_pnl: +duendePnl.toFixed(2),
+    position: 0,
+    vs_duende: 'equal',
+  });
+
+  // Usuários
+  for (const p of profiles ?? []) {
+    const { data: userBetsToday } = await supabase
+      .from('user_bets')
+      .select('amount, payout, result')
+      .eq('user_id', p.id)
+      .not('result', 'is', null)
+      .gte('created_at', startOfDay.toISOString());
+
+    const pnl = (userBetsToday ?? []).reduce((acc, b) => {
+      return acc + (b.result === 'win' ? b.payout - b.amount : -b.amount);
+    }, 0);
+
+    entries.push({
+      round_date: today,
+      user_id: p.id,
+      username: p.username,
+      avatar_url: p.avatar_url,
+      balance: p.balance,
+      daily_pnl: +pnl.toFixed(2),
+      position: 0,
+      vs_duende: p.balance > duendeBalance ? 'above' : p.balance < duendeBalance ? 'below' : 'equal',
+    });
+  }
+
+  // Ordenar por saldo e atribuir posição
+  entries.sort((a, b) => b.balance - a.balance);
+  entries.forEach((e, i) => { e.position = i + 1; });
+
+  // Upsert no daily_ranking
+  await supabase.from('daily_ranking')
+    .upsert(entries, { onConflict: 'round_date,user_id' });
+
+  logger.info('ranking_generated', { date: today, participants: entries.length });
 }

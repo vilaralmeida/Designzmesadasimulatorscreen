@@ -11,6 +11,7 @@ import { bankrollRouter } from './routes/bankroll.js';
 import { contentRouter } from './routes/content.js';
 import { tipsRouter } from './routes/tips.js';
 import { adminRouter } from './routes/admin.js';
+import rankingRouter from './routes/ranking.js';
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use('/api/bets',     betsRouter);
 app.use('/api/bankroll', bankrollRouter);
 app.use('/api/content',  contentRouter);
 app.use('/api/tips',     tipsRouter);
+app.use('/api/ranking',  rankingRouter);
 
 // ── Rotas admin (protegidas) ────────────────────────────────
 app.use('/admin', adminRouter);
