@@ -1,24 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { DonateCTA } from '../components/DonateCTA';
 import { BankrollChart } from '../components/BankrollChart';
-import { BetHistoryCard } from '../components/BetHistoryCard';
 import { UpcomingBetsTable } from '../components/UpcomingBetsTable';
 import { BalanceCard } from '../components/BalanceCard';
 import { BeatDuendeCard } from '../components/BeatDuendeCard';
 import exampleImage from 'figma:asset/5904eb9eb72b5560bdc24189852159dc8ae88496.png';
-import winImage from 'figma:asset/fff309965f78ba749f829df22aca85c32448399d.png';
-import lossImage from 'figma:asset/38de288c4fd63109016bd967f005d4a38821089c.png';
-import { AlignJustify, History, AlertTriangle } from 'lucide-react';
-import { api, Bet } from '../../lib/api';
+import { AlignJustify, AlertTriangle } from 'lucide-react';
 
 export default function Home() {
-  const [bets, setBets] = useState<Bet[]>([]);
-
-  useEffect(() => {
-    api.getBets(10)
-      .then(res => setBets(res.data))
-      .catch(() => setBets([]));
-  }, []);
 
   return (
     <div className="w-full max-w-md p-4 relative z-10 overflow-x-hidden">
@@ -67,36 +56,6 @@ export default function Home() {
       <BalanceCard />
 
       <BankrollChart />
-
-      <div className="mt-6 mb-8 flex items-center gap-2 border-b-2 border-dashed border-[#4A4E58] pb-3">
-        <History size={18} className="text-[#FFB800]" />
-        <h2 className="text-[12px] font-black text-gray-400 uppercase tracking-[0.2em]">
-          Histórico de Palpites
-        </h2>
-      </div>
-
-      {bets.length === 0 ? (
-        <div className="text-center text-gray-500 text-[11px] font-black uppercase tracking-widest py-8">
-          Ainda sem apostas liquidadas. Os jogos ainda não começaram!
-        </div>
-      ) : (
-        bets.map((bet, idx) => {
-          const matchLabel = bet.home_score != null
-            ? `${bet.home_team} ${bet.home_score} x ${bet.away_score} ${bet.away_team}`
-            : `${bet.home_team} x ${bet.away_team}`;
-          return (
-            <BetHistoryCard
-              key={bet.id}
-              status={bet.result as 'win' | 'loss'}
-              imageSrc={bet.result === 'win' ? winImage : lossImage}
-              match={matchLabel}
-              betAmount={Number(bet.amount)}
-              odds={Number(bet.odds)}
-              duendeQuote={bet.duende_quote || '...'}
-            />
-          );
-        })
-      )}
     </div>
   );
 }
