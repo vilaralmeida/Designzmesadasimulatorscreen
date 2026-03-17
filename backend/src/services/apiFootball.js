@@ -90,6 +90,23 @@ export async function fetchFixtureResult(fixtureId) {
 }
 
 /**
+ * Lista todas as rodadas de uma liga/temporada.
+ * Ex: ['Regular Season - 1', 'Regular Season - 2', ...]
+ */
+export async function fetchRounds(leagueId, season) {
+  const data = await get('/fixtures/rounds', { league: leagueId, season });
+  return data.response || [];
+}
+
+/**
+ * Busca todos os jogos de uma rodada específica.
+ */
+export async function fetchFixturesByRound(leagueId, season, round) {
+  const data = await get('/fixtures', { league: leagueId, season, round });
+  return data.response || [];
+}
+
+/**
  * Busca odds pré-jogo de um fixture (bookmaker: 8 = Bet365).
  * Retorna null se o endpoint não estiver disponível no plano atual.
  */

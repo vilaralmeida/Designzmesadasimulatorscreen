@@ -68,6 +68,22 @@ export interface Tip {
   created_at: string;
 }
 
+export interface RoundFixture {
+  fixture: {
+    id: number;
+    date: string;
+    status: { short: string; elapsed: number | null };
+    venue: { name: string; city: string };
+  };
+  league: { round: string };
+  teams: {
+    home: { id: number; name: string; logo: string; winner: boolean | null };
+    away: { id: number; name: string; logo: string; winner: boolean | null };
+  };
+  goals: { home: number | null; away: number | null };
+  score: { halftime: { home: number | null; away: number | null } };
+}
+
 export interface ContentBlock {
   id: string;
   key: string;
@@ -135,6 +151,9 @@ export const api = {
   getTips: (limit = 20) => get<{ data: Tip[]; total: number }>(`/api/tips?limit=${limit}`),
   postTip: (body: { name: string; email: string; suggestion: string }) => post<Tip>('/api/tips', body),
   getContent: () => get<Record<string, { value: string; type: string }>>('/api/content'),
+  getSerieARounds: () => get<string[]>('/api/serie-a/rounds'),
+  getSerieARoundFixtures: (round: string) =>
+    get<RoundFixture[]>(`/api/serie-a/rounds/${encodeURIComponent(round)}`),
 
   // ── Admin ────────────────────────────────────────────────
   admin: {

@@ -17,9 +17,9 @@
 | 6 | Página Ajuda — PIX e QR Code reais | ✅ Concluído |
 | 7 | Painel Admin (frontend UI) | ✅ Concluído |
 | 8 | Deploy (Vercel + Railway + CI/CD via GitHub Actions) | ✅ Concluído |
-| 9 | Monitoramento (Sentry + UptimeRobot) | 🔲 Pendente |
+| 9 | Monitoramento (Sentry + UptimeRobot) | ✅ Concluído |
 | 10 | Extras: PWA · Cache · Fallback offline | 🔲 Pendente |
-| 11 | Aposta contínua — 25 ligas, janela 14 dias, máx 8/dia | ✅ Concluído |
+| 11 | Aposta contínua — Série A exclusiva, janela 14 dias, máx 8/dia | ✅ Concluído |
 | 12 | Módulo de Engajamento — Ranking de Competidores | ✅ Concluído |
 | 13 | Card "Bata o Duende" na Home + reorganização de cards | ✅ Concluído |
 | 14 | Chat Duende integrado ao perfil logado no Ranking | ✅ Concluído |
@@ -29,10 +29,16 @@
 | 18 | Fix: saldo da Home não atualizava (bug bankroll.id) | ✅ Concluído |
 | 19 | Frases do Duende expandidas (13 → 43 quotes) | ✅ Concluído |
 | 20 | Fix: nome do jogo truncado no BetHistoryCard | ✅ Concluído |
-| 21 | Monitoramento (Sentry + UptimeRobot) | 🔲 Pendente |
+| 21 | Monitoramento (Sentry + UptimeRobot) | ✅ Concluído |
 | 22 | PWA — instalar como app no celular | 🔲 Pendente |
-| 23 | Onboarding — explicação para novos usuários | 🔲 Pendente |
+| 23 | Onboarding — explicação para novos usuários | ✅ Concluído |
 | 24 | Página de perfil do usuário | 🔲 Pendente |
+| 25 | Bug: saldo da Home travado em R$100 (bankroll não atualiza após apostas) | ✅ Concluído |
+| 26 | UX: URL do Supabase exposta no login Google ("Prosseguir para ymxtvynhodvmsmqdxjij.supabase.co") | 🔲 Pendente |
+| 27 | UX: Menu hambúrguer (Home) sem função — implementar drawer com os mesmos links do BottomTabBar | 🔲 Pendente |
+| 28 | Redesign Home — remover histórico de apostas, foco em jogos ao vivo/próximos | 🔲 Pendente |
+| 29 | App de futebol moderno — live scores, detalhe de partida, tabela com forma recente | 🔲 Pendente |
+| 30 | Catálogo de rodadas da Série A — página /serie-a com navegação por rodada | ✅ Concluído |
 
 ---
 
@@ -472,4 +478,212 @@ Ao liquidar apostas do dia (settlePendingBets):
 
 ---
 
-*Última atualização: 2026-03-15 — Fases 1–20 concluídas. Produção ativa em pindaiba.red. CI/CD via GitHub Actions. Pendentes: monitoramento, PWA, onboarding, perfil.*
+---
+
+## 🐛 FASE 25 — Bug: Saldo da Home travado em R$100
+
+**Sintoma:** O `BalanceCard` exibe R$100 mesmo após apostas liquidadas com perda/ganho. O valor nunca se afasta do saldo inicial.
+
+**Causa suspeita:** Race condition no `betEngine.js` ao liquidar múltiplas apostas no mesmo ciclo do scheduler. Cada aposta lê `bankroll.balance` de forma independente (sem lock), calcula o novo saldo sobre o valor lido e faz o `UPDATE`. Se duas apostas lêem `balance = 100` antes de qualquer update ser concluído, o segundo update sobrescreve o primeiro — e o saldo final ignora uma das apostas. O resultado é que o `bankroll.balance` no Supabase permanece em 100 ou sofre variações parciais.
+
+**Arquivos envolvidos:**
+- `backend/src/services/betEngine.js` — seção que atualiza `bankroll` após cada aposta (linhas ~319–334)
+- `backend/src/routes/bankroll.js` — endpoint `GET /api/bankroll`
+- `src/app/components/BalanceCard.tsx` — exibe `d.balance`
+
+**Fix recomendado:**
+1. Processar a liquidação das apostas **sequencialmente** (não em paralelo) para eliminar a race condition
+2. OU usar uma operação atômica de incremento no Supabase: `UPDATE bankroll SET balance = balance + $delta WHERE id = $id` em vez de ler→calcular→escrever
+3. Verificar no Admin se o `bankroll.balance` no banco já está desatualizado (se sim, corrigir manualmente via `POST /admin/bankroll/set`)
+
+**Observação:** A Phase 18 corrigiu um bug relacionado ao `bankroll.id` sendo undefined — este é um problema diferente (race condition na liquidação em lote).
+
+---
+
+---
+
+## 🔲 FASE 26 — UX: Esconder URL do Supabase no Login Google
+
+**Sintoma:** Ao clicar em "Entrar com Google", o modal do Google exibe:
+> "Prosseguir para **ymxtvynhodvmsmqdxjij.supabase.co**"
+— URL técnica e sem sentido para o usuário, passa impressão de insegurança.
+
+**Por que acontece:** O Supabase é o intermediário do fluxo OAuth. O Google mostra o domínio do callback de redirecionamento, que aponta para o projeto Supabase.
+
+**Opções para resolver:**
+
+| Abordagem | Resultado | Custo |
+|-----------|-----------|-------|
+| **Supabase Custom Domain** | Google passa a exibir `auth.pindaiba.red` | Requer plano Pro ($25/mês) |
+| **Vanity subdomain** | Troca para algo como `pindaiba.supabase.co` | Gratuito, mas ainda expõe `.supabase.co` |
+| **Proxy OAuth no backend** | Backend (Railway) recebe o callback do Google e repassa ao Supabase | Gratuito, mas implementação complexa |
+
+**Solução recomendada:** Supabase Custom Domain (Pro).
+
+**Passos (Supabase Pro):**
+1. Fazer upgrade do projeto para plano Pro no dashboard Supabase
+2. Ir em **Project Settings → Custom Domains**
+3. Adicionar `auth.pindaiba.red` e configurar CNAME na Vercel/DNS
+4. Supabase emite TLS automático
+5. Atualizar `VITE_SUPABASE_URL` na Vercel para `https://auth.pindaiba.red`
+6. Atualizar `SUPABASE_URL` no Railway para `https://auth.pindaiba.red`
+7. No Google Cloud Console → Credenciais OAuth → adicionar `https://auth.pindaiba.red` como Authorized redirect URI
+
+**Resultado:** Google exibe "Prosseguir para **pindaiba.red**" — domínio reconhecível pelo usuário.
+
+---
+
+---
+
+## 🔲 FASE 27 — UX: Menu Hambúrguer funcional
+
+**Situação atual:** O botão `AlignJustify` (hambúrguer) no canto superior direito da `Home.tsx` existe visualmente mas não tem `onClick` — é um botão inerte.
+
+**Objetivo:** Ao clicar no hambúrguer, abrir um **drawer lateral ou bottom sheet** com os mesmos destinos do `BottomTabBar`, para que o usuário possa navegar sem precisar alcançar a barra inferior.
+
+**Links que devem aparecer no menu:**
+
+| Rota | Label | Ícone |
+|------|-------|-------|
+| `/` | Home | `Home` |
+| `/historia` | Origem | `BookOpen` |
+| `/stats` | Stats | `LineChart` |
+| `/ranking` | Ranking | `Trophy` |
+| `/ajuda` | Ajuda | `Coffee` |
+
+**Arquivos envolvidos:**
+- `src/app/pages/Home.tsx` — adicionar `useState` para controle do drawer + `onClick` no botão hambúrguer
+- Novo componente `src/app/components/HamburgerMenu.tsx` — drawer com os links (reutilizar estilos do `BottomTabBar`)
+
+**Comportamento esperado:**
+- Clique no hambúrguer → abre drawer (slide from right ou bottom sheet)
+- Clique em qualquer link → navega e fecha o drawer
+- Clique fora do drawer ou em botão "X" → fecha
+- Item da rota atual → destacado (mesmo comportamento de `active` do `BottomTabBar`)
+
+---
+
+## 🔲 FASE 28 — Redesign da Home
+
+**Motivação:** A Home atual mistura muita coisa — disclaimer, card de ranking, tabela de apostas futuras, CTA de doação, saldo, gráfico e histórico de apostas. O histórico de apostas do Duende (últimos resultados) ocupa espaço nobre sem agregar valor imediato ao usuário.
+
+**Proposta de nova hierarquia de informação:**
+
+| Prioridade | Componente | Motivo |
+|-----------|-----------|--------|
+| 1 | Jogos ao vivo / próximos (novo — Fase 29) | Coração do app moderno |
+| 2 | Card "Bata o Duende" | Engajamento com ranking |
+| 3 | Saldo + gráfico do Duende | Identidade do app |
+| 4 | DonateCTA | Apoio financeiro |
+| — | ~~BetHistoryCard (histórico de apostas)~~ | Remover da Home → mover para Stats ou aba própria |
+
+**O que remover da Home:**
+- `BetHistoryCard` — histórico de apostas passadas do Duende (mover para `/stats` ou sub-aba)
+
+**O que permanece:**
+- Header Zé Mesada
+- Disclaimer banner
+- BeatDuendeCard
+- BalanceCard + BankrollChart
+- DonateCTA
+
+---
+
+## 🔲 FASE 29 — App de Futebol Moderno
+
+### Análise de Viabilidade (cruzada com API-Football)
+
+> Contexto: plano PRO (7.500 calls/dia). Uso atual: ~106 calls/dia (1,4%). Margem disponível: ~7.400 calls/dia.
+
+#### Funcionalidades e viabilidade por feature
+
+| Feature | Endpoint API-Football | Série A (71) | Série B (72) | Custo estimado/dia | Viável? |
+|---------|----------------------|:------------:|:------------:|-------------------|:-------:|
+| Placar ao vivo + minuto | `GET /fixtures?live=all` | ✅ | ✅ | ~90 calls/jogo (poll 60s × 90min) | ✅ |
+| Indicador pulsante (minuto) | Frontend only | — | — | 0 | ✅ |
+| Eventos ao vivo (gols, cartões) | `GET /fixtures/events?fixture=id` | ✅ | ❌ | Incluído no live poll | ✅ S.A. / ❌ S.B. |
+| Mini-stats ao vivo (posse, finalizações) | `GET /fixtures/statistics?fixture=id` | ✅ | ❌ | +1 call/poll por jogo | ✅ S.A. / ❌ S.B. |
+| Previsão pré-jogo com probabilidades | `GET /predictions?fixture=id` | ✅ | ✅ | 1 call/jogo (once) | ✅ |
+| Timeline de eventos (tela detalhe) | `GET /fixtures/events?fixture=id` | ✅ | ❌ | 1 call por abertura | ✅ S.A. / ❌ S.B. |
+| Estatísticas comparativas (barras) | `GET /fixtures/statistics?fixture=id` | ✅ | ❌ | 1 call por abertura | ✅ S.A. / ❌ S.B. |
+| Escalação + formação no campo | `GET /fixtures/lineups?fixture=id` | ✅ | ❌ | 1 call por abertura | ✅ S.A. / ❌ S.B. |
+| Resultado do intervalo | Incluído em `/fixtures` | ✅ | ✅ | 0 (já buscado) | ✅ |
+| Tabela com posição + zona | `GET /standings?league&season` | ✅ | ✅ | 1 call/dia por liga | ✅ |
+| Forma recente (últimos 5 jogos) | Campo `form` em `/standings` | ✅ | ✅ | 0 (incluído em standings) | ✅ |
+| Push notifications (gols/cartões) | Backend → Web Push API | S.A. ✅ | ❌ | Infra nova (FCM/VAPID) | ⚠️ complexo |
+| Favoritar times/ligas | Supabase `user_profiles` | ✅ | ✅ | 0 (BD existente) | ✅ |
+| Dark mode nativo | Já implementado | ✅ | ✅ | 0 | ✅ já pronto |
+
+#### Impacto de quota para live polling
+
+```
+Cenário: 5 jogos simultâneos da Série A, polling a cada 60s
+
+Por jogo:
+  /fixtures?live=all     → 1 call/min (resposta inclui todos os jogos ao vivo)
+  /fixtures/statistics   → 1 call/min por jogo × 5 = 5 calls/min
+
+Total por partida (90min):
+  fixtures: 90 calls
+  statistics: 5 jogos × 90 = 450 calls
+
+Total diário estimado com live:
+  Uso atual:         ~106 calls
+  Live (rodada):     ~540 calls
+  TOTAL:             ~650 calls/dia  →  8,7% da quota PRO
+
+✅ Confortavelmente dentro do limite.
+```
+
+#### Restrição principal: Série B não tem eventos/lineups/stats
+A cobertura da Série B 2026 é mínima — apenas standings, predictions e odds. Tudo que envolve eventos ao vivo, escalação e estatísticas de partida só funciona para a Série A. A cobertura da Série B pode expandir ao longo da temporada (vale re-checar mensalmente).
+
+---
+
+### Arquitetura proposta
+
+#### Novas telas
+
+| Tela | Rota | Descrição |
+|------|------|-----------|
+| Live / Jogos | `/` (nova Home) ou `/jogos` | Lista de jogos ao vivo + próximos do dia |
+| Detalhe da partida | `/jogo/:id` | Placar, eventos, stats, escalação em tabs |
+| Tabela | `/tabela/:leagueId` | Standings com forma recente e zonas coloridas |
+
+#### Novos endpoints backend
+
+| Método | Rota | Fonte | Descrição |
+|--------|------|-------|-----------|
+| GET | `/api/live` | `/fixtures?live=all` | Jogos ao vivo agora |
+| GET | `/api/match/:id` | `/fixtures?id=` | Dados completos de uma partida |
+| GET | `/api/match/:id/events` | `/fixtures/events` | Timeline de eventos |
+| GET | `/api/match/:id/stats` | `/fixtures/statistics` | Stats comparativas |
+| GET | `/api/match/:id/lineups` | `/fixtures/lineups` | Escalações e formação |
+| GET | `/api/standings/:leagueId` | `/standings` | Tabela com forma |
+
+#### Cache recomendado (evitar quota desnecessária)
+
+| Dado | TTL sugerido |
+|------|-------------|
+| Standings | 30 min |
+| Predictions | 6h |
+| Lineups | 5 min (mudam só no início) |
+| Live scores | 30s–60s (poll ativo) |
+| Eventos de jogo finalizado | Indefinido (imutável) |
+
+#### Push notifications (fase futura separada)
+Requer: Service Worker + VAPID keys + tabela `push_subscriptions` no Supabase + lógica no scheduler de live para disparar push quando detectar novo evento.
+
+---
+
+### Ordem de implementação sugerida
+
+1. **Standings + forma recente** — mais simples, alto valor, sem live polling
+2. **Previsões pré-jogo** — endpoint já confirmado, integra bem na Home
+3. **Tela de detalhe** — events + stats + lineups (Série A)
+4. **Live scoring** — requer poll no frontend ou SSE no backend
+5. **Push notifications** — maior complexidade, fase isolada
+
+---
+
+*Última atualização: 2026-03-17 — Fases 1–20 concluídas. Produção ativa em pindaiba.red. CI/CD via GitHub Actions. Pendentes: monitoramento (21), PWA (22), onboarding (23), perfil (24), bug saldo (25), URL Supabase (26), hambúrguer (27), redesign home (28), app futebol moderno (29).*

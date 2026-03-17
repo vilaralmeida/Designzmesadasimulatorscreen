@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet, useLocation } from 'react-router';
 import { BottomTabBar } from '../components/BottomTabBar';
+import { Onboarding } from '../components/Onboarding';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function RootLayout() {
@@ -32,6 +33,7 @@ export default function RootLayout() {
       </AnimatePresence>
 
       <BottomTabBar />
+      <Onboarding />
     </div>
   );
 }

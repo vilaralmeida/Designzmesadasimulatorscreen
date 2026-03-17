@@ -5,7 +5,6 @@ import { BetHistoryCard } from '../components/BetHistoryCard';
 import { UpcomingBetsTable } from '../components/UpcomingBetsTable';
 import { BalanceCard } from '../components/BalanceCard';
 import { BeatDuendeCard } from '../components/BeatDuendeCard';
-import { Onboarding } from '../components/Onboarding';
 import exampleImage from 'figma:asset/5904eb9eb72b5560bdc24189852159dc8ae88496.png';
 import winImage from 'figma:asset/fff309965f78ba749f829df22aca85c32448399d.png';
 import lossImage from 'figma:asset/38de288c4fd63109016bd967f005d4a38821089c.png';
@@ -23,7 +22,6 @@ export default function Home() {
 
   return (
     <div className="w-full max-w-md p-4 relative z-10 overflow-x-hidden">
-      <Onboarding />
       {/* Header - Zé Mesada Vibe */}
       <header className="flex justify-between items-center mb-6 pt-2">
         <div className="flex items-center gap-3 bg-[#1A1D24] p-2 pr-4 rounded-full border-2 border-dashed border-[#FFB800] transform -rotate-2 shadow-[4px_4px_0_0_rgba(255,184,0,0.2)]">

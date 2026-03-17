@@ -2,46 +2,12 @@ import { supabase } from '../lib/supabase.js';
 import { fetchUpcomingFixtures, fetchOdds } from './apiFootball.js';
 import { logger } from '../lib/logger.js';
 
-// ── Pool de ligas (ordenadas por prioridade) ─────────────────
+// ── Liga monitorada ──────────────────────────────────────────
 const PRIORITY_LEAGUES = [
-  // Brasil
-  { id: 71,  name: 'Brasileirão Série A', country: 'Brazil'      },
-  { id: 72,  name: 'Brasileirão Série B', country: 'Brazil'      },
-  { id: 75,  name: 'Brasileirão Série C', country: 'Brazil'      },
-  { id: 73,  name: 'Copa do Brasil',      country: 'Brazil'      },
-  // Europa — top 5
-  { id: 39,  name: 'Premier League',      country: 'England'     },
-  { id: 140, name: 'La Liga',             country: 'Spain'       },
-  { id: 135, name: 'Serie A',             country: 'Italy'       },
-  { id: 78,  name: 'Bundesliga',          country: 'Germany'     },
-  { id: 61,  name: 'Ligue 1',             country: 'France'      },
-  { id: 94,  name: 'Primeira Liga',       country: 'Portugal'    },
-  // Europa — competições internacionais
-  { id: 2,   name: 'Champions League',    country: 'Europe'      },
-  { id: 3,   name: 'Europa League',       country: 'Europe'      },
-  { id: 848, name: 'Conference League',   country: 'Europe'      },
-  // Europa — outras ligas
-  { id: 88,  name: 'Eredivisie',          country: 'Netherlands' },
-  { id: 144, name: 'Belgian Pro League',  country: 'Belgium'     },
-  { id: 179, name: 'Scottish Prem.',      country: 'Scotland'    },
-  { id: 203, name: 'Süper Lig',           country: 'Turkey'      },
-  { id: 197, name: 'Super League',        country: 'Greece'      },
-  // Américas
-  { id: 253, name: 'MLS',                 country: 'USA'         },
-  { id: 262, name: 'Liga MX',             country: 'Mexico'      },
-  { id: 128, name: 'Primera División',    country: 'Argentina'   },
-  { id: 239, name: 'Primera División',    country: 'Chile'       },
-  { id: 218, name: 'Serie A',             country: 'Colombia'    },
-  // Ásia / Oriente Médio
-  { id: 98,  name: 'J-League',            country: 'Japan'       },
-  { id: 292, name: 'K-League',            country: 'South Korea' },
-  { id: 307, name: 'Saudi Pro League',    country: 'Saudi Arabia'},
-  // África
-  { id: 233, name: 'Premier League',      country: 'Egypt'       },
+  { id: 71, name: 'Brasileirão Série A', country: 'Brazil' },
 ];
 
-// Mantido por compatibilidade com ensureContinuousBet
-const FALLBACK_LEAGUES = PRIORITY_LEAGUES.slice(10);
+const FALLBACK_LEAGUES = PRIORITY_LEAGUES;
 
 // ── Frases do Duende Chicão ─────────────────────────────────
 const DUENDE_QUOTES = [
@@ -268,6 +234,22 @@ export async function settlePendingBets() {
 
   logger.info('settle_start', { pending_count: pending.length });
 
+  // Lê o bankroll UMA VEZ antes do loop para garantir ID consistente
+  // e evitar que falhas silenciosas façam o balance resetar a 100
+  const { data: bankroll, error: bankrollError } = await supabase
+    .from('bankroll')
+    .select('id, balance')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (bankrollError || !bankroll) {
+    logger.error('settle_bankroll_read_failed', { message: bankrollError?.message });
+    return;
+  }
+
+  let runningBalance = Number.parseFloat(bankroll.balance);
+
   for (const bet of pending) {
     let fixture;
     try {
@@ -316,22 +298,21 @@ export async function settlePendingBets() {
       duende_quote:  bet.duende_quote,
     });
 
-    // Atualizar bankroll
-    const { data: bankroll } = await supabase
-      .from('bankroll')
-      .select('id, balance')
-      .order('updated_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    const currentBalance = bankroll?.balance || 0;
+    // Atualizar bankroll com saldo acumulado (ID fixo, sem re-select dentro do loop)
     const delta = won ? payout - bet.amount : -bet.amount;
-    const newBalance = +(currentBalance + delta).toFixed(2);
+    runningBalance = +(runningBalance + delta).toFixed(2);
 
-    await supabase
+    const { error: updateError } = await supabase
       .from('bankroll')
-      .update({ balance: newBalance, updated_at: new Date().toISOString(), updated_by: 'scheduler' })
+      .update({ balance: runningBalance, updated_at: new Date().toISOString(), updated_by: 'scheduler' })
       .eq('id', bankroll.id);
+
+    if (updateError) {
+      logger.error('settle_bankroll_update_failed', {
+        match: `${bet.home_team} x ${bet.away_team}`,
+        message: updateError.message,
+      });
+    }
 
     // Marcar aposta como liquidada
     await supabase
@@ -347,7 +328,7 @@ export async function settlePendingBets() {
       result,
       score: `${homeScore}-${awayScore}`,
       payout,
-      new_balance: newBalance,
+      new_balance: runningBalance,
     });
   }
 
